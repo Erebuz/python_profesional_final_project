@@ -1,0 +1,62 @@
+###############################################
+# Общие параметры
+logLevel: info
+logDestinations: [stdout]
+logFile: mediamtx.log
+
+readTimeout: 10s
+writeTimeout: 10s
+
+# ВМЕСТО readBufferCount используем writeQueueSize
+writeQueueSize: 512
+
+# HTTP API
+api: no
+apiAddress: 127.0.0.1:9997
+
+# Метрики
+metrics: no
+metricsAddress: 127.0.0.1:9998
+
+###############################################
+# RTSP параметры
+rtsp: yes
+# ВМЕСТО protocols используем rtspTransports
+rtspTransports: [udp, multicast, tcp]
+# ВМЕСТО encryption используем rtspEncryption
+rtspEncryption: "no"
+
+rtspAddress: :8554
+rtpAddress: :8000
+rtcpAddress: :8001
+multicastIPRange: 224.1.0.0/16
+multicastRTPPort: 8002
+multicastRTCPPort: 8003
+
+###############################################
+# RTMP параметры
+rtmp: yes
+rtmpAddress: :1935
+
+###############################################
+# HLS параметры
+hls: yes
+hlsAddress: :8888
+hlsVariant: mpegts
+hlsSegmentCount: 3
+hlsSegmentDuration: 1s
+# ВМЕСТО hlsAllowOrigin (строка) используем hlsAllowOrigins (список)
+hlsAllowOrigins: ["*"]
+
+# Выключаем ненужное
+webrtc: no
+srt: no
+
+###############################################
+# Пути (Paths)
+paths:
+  all:
+    source: publisher
+
+  video:
+    source: publisher

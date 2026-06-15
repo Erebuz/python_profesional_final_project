@@ -1,0 +1,43 @@
+version: '3.8'
+
+volumes:
+  frontend_static:
+
+services:
+  mmtx:
+    image: bluenviron/mediamtx:latest
+    container_name: smart-eye-mmtx
+    ports:
+      - "8554:8554" # RTSP
+      - "8888:8888" # HLS
+      - "8889:8889" # WebRTC
+    volumes:
+      - ./mmtx/mediamtx.yml:/mediamtx.yml
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: smart-eye-frontend
+    volumes:
+      - frontend_static:/shared
+
+  backend:
+    build:
+      context: ./backend
+    container_name: smart-eye-backend
+    depends_on:
+      - mmtx
+      - frontend
+    ports:
+      - "8080:8080"
+    environment:
+      - SOURCE=0
+      - RTSP_HOST=mmtx
+      - RTSP_PORT=8554
+      - ACTIVITY_LOG_FPS=1
+      - ACTIVITY_LOG_LENGTH=100
+    volumes:
+      - frontend_static:/app/public:ro
+      - ./backend/models:/app/models
+    restart: unless-stopped
