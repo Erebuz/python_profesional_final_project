@@ -1,3 +1,7 @@
 *.idea
 *.__pycache__
 */*.pt
+*/*.avi
+*/*.crt
+*/*.key
+
