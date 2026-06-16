@@ -1,0 +1,62 @@
+name: Build and Publish Smart Eye
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ 'v*.*.*' ]
+
+env:
+  REGISTRY: ghcr.io
+  # Имена образов будут привязаны к твоему репозиторию
+  IMAGE_BASE: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log into registry ${{ env.REGISTRY }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # --- 1. СБОРКА FRONTEND ---
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-frontend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- 2. СБОРКА BACKEND ---
+      - name: Build and push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- 3. СБОРКА MEDIAMTX ---
+      - name: Build and push MediaMTX
+        uses: docker/build-push-action@v5
+        with:
+          context: ./mmtx
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_BASE }}-mmtx:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
