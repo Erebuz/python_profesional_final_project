@@ -1,6 +1,3 @@
 - id: 1
-  password: $2b$12$AyJ5s1edjLBHMNdA6px5FuKIsO4iFtKYlIJIAmDRNGjgEC7j1MI/y
-  username: user
-- id: 2
-  password: $2b$12$gdC5Bnh/P3xKnF7fGki2i.pz1mguupZy4UgbIlmxmKxdxyr4.kdAG
+  password: $2b$12$pmbSGHIkvhH8onaNPHz5.uQnRxoiK8U9G/VBAcbw8tRRrUUYNHcx6
   username: admin

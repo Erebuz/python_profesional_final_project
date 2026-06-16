@@ -6,14 +6,25 @@ from threading import Thread
 import uvicorn
 from dotenv import load_dotenv
 
-from RtspMergeServer import RtspMergeServer
+from rtsp_server.RtspMergeServer import RtspMergeServer
 from web.main import WebServer
 
 
 class App:
     def __init__(self):
+        load_dotenv('.env')
         self.root = os.path.dirname(os.path.abspath(__file__))
-        self.rtsp = RtspMergeServer(source=os.getenv("SOURCE", 0), fps=30)
+        self.rtsp = RtspMergeServer(source=os.getenv("SOURCE", 0),
+                                    port=int(os.getenv("RTSP_PORT", 8554)),
+                                    host=os.getenv("RTSP_HOST", "localhost"),
+                                    fps=30,
+                                    show_stat=False,
+                                    show_osd=False)
+
+        print(f"DEBUG: Initializing RTSP Streamer")
+        print(f"DEBUG: Source: {os.getenv("SOURCE", 0)}")
+        print(f"DEBUG: Target: rtsp://{os.getenv("RTSP_HOST", "localhost")}:{os.getenv("RTSP_PORT", 8554)}/video")
+
         self.web_server = WebServer(self)
 
         load_dotenv(".env")

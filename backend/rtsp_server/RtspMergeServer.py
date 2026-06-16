@@ -7,7 +7,7 @@ import cv2
 import numpy as np
 
 from neural_net.NeuralNet import NeuralNetwork
-from RtspServer import RtspStreamer
+from .RtspServer import RtspStreamer
 
 
 class RtspMergeServer(RtspStreamer):
@@ -81,8 +81,8 @@ class RtspMergeServer(RtspStreamer):
         wh: np.ndarray = np.flip(frame.shape[0:2])  # ширина и высота кадра
         current_active_class: dict[str, int] = {}
 
-        for i in range(int(nums)):
-            idx = int(classes[i])
+        for i in range(int(nums.item())):
+            idx = int(classes[i].item())
             if idx >= len(class_names):
                 continue
 
@@ -102,7 +102,8 @@ class RtspMergeServer(RtspStreamer):
             text_pos = (x1y1[0], max(16, x1y1[1] + 16))
 
             cv2.rectangle(frame, x1y1, x2y2, (255, 0, 0), 2)
-            label = f"{cl.capitalize()} {score[i][0] if isinstance(score[i], (list, np.ndarray)) else score[i]:.2f}"
+            score_val = score[i][0].item() if isinstance(score[i], (list, np.ndarray)) else score[i]
+            label = f"{cl.capitalize()} {score_val:.2f}"
             cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
 
         self.active_class = current_active_class

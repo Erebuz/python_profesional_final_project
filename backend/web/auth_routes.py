@@ -1,5 +1,8 @@
+import os
+
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
+from jose import jwt
 
 from .auth import Auth
 
@@ -34,10 +37,8 @@ async def me(request: Request):
 
     token = auth_header.split(" ")[1]
     try:
-        from jose import jwt
-
-        payload = jwt.decode(token, auth_service.SECRET_KEY, algorithms=[auth_service.ALGORITHM])
-        user_id = payload.get("id")
+        payload = jwt.decode(token, os.getenv("SECRET_KEY", ''), algorithms=[auth_service.ALGORITHM])
+        user_id = payload.get("id", '')
         user = auth_service.get_user_by_id(user_id)
 
         if not user:

@@ -32,12 +32,14 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - SOURCE=0
+      - SOURCE=/app/videos/video.avi
       - RTSP_HOST=mmtx
       - RTSP_PORT=8554
       - ACTIVITY_LOG_FPS=1
       - ACTIVITY_LOG_LENGTH=100
+      - SECRET_KEY=1234567890
     volumes:
       - frontend_static:/app/public:ro
       - ./backend/models:/app/models
+      - ./videos:/app/videos:ro
     restart: unless-stopped

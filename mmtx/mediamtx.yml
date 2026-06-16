@@ -7,7 +7,6 @@ logFile: mediamtx.log
 readTimeout: 10s
 writeTimeout: 10s
 
-# ВМЕСТО readBufferCount используем writeQueueSize
 writeQueueSize: 512
 
 # HTTP API
@@ -21,9 +20,7 @@ metricsAddress: 127.0.0.1:9998
 ###############################################
 # RTSP параметры
 rtsp: yes
-# ВМЕСТО protocols используем rtspTransports
 rtspTransports: [udp, multicast, tcp]
-# ВМЕСТО encryption используем rtspEncryption
 rtspEncryption: "no"
 
 rtspAddress: :8554
@@ -45,8 +42,8 @@ hlsAddress: :8888
 hlsVariant: mpegts
 hlsSegmentCount: 3
 hlsSegmentDuration: 1s
-# ВМЕСТО hlsAllowOrigin (строка) используем hlsAllowOrigins (список)
 hlsAllowOrigins: ["*"]
+hlsAlwaysRemux: yes
 
 # Выключаем ненужное
 webrtc: no

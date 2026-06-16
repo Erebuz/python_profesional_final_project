@@ -1,13 +1,11 @@
 FROM python:3.12-slim
 
-# Обновленный список системных зависимостей
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# ... остальная часть файла без изменений ...
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 

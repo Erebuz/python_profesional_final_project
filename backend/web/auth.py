@@ -9,7 +9,6 @@ from jose import jwt
 
 
 class Auth:
-    SECRET_KEY = os.getenv("SECRET_KEY")
     ALGORITHM = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -28,7 +27,9 @@ class Auth:
         users = list(self.users)
         # Дефолтный админ
         if not any(u["username"] == "admin" for u in users):
-            users.append({"id": 0, "username": "admin", "password": "$2b$12$T/9VLLmm7TAkIYlhXdZwiemjx9W7JQrlfmZ41C/5Qu5Qj5X.KUDa2"})
+            users.append({"id": 0, "username": "admin", "password": "$2b$12$pmbSGHIkvhH8onaNPHz5.uQnRxoiK8U9G/VBAcbw8tRRrUUYNHcx6"})
+
+        print(self.__create_hash_psw('admin'))
         return users
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
@@ -38,7 +39,7 @@ class Auth:
         to_encode = data.copy()
         expire = datetime.utcnow() + timedelta(minutes=self.ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode.update({"exp": expire})
-        return jwt.encode(to_encode, self.SECRET_KEY, algorithm=self.ALGORITHM)
+        return jwt.encode(to_encode, os.getenv("SECRET_KEY", ''), algorithm=self.ALGORITHM)
 
     def get_user_by_username(self, username: str):
         return next((u for u in self.all_users if u["username"] == username), None)

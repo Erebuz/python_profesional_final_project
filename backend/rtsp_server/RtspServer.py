@@ -20,6 +20,7 @@ class RtspStreamer:
         self.source: str | int = source
         self.fps: int = fps
         self.rtsp_url: Final[str] = f"rtsp://{host}:{port}/{uri}"
+        print('RTSP output:', self.rtsp_url)
         self.show_stat: bool = show_stat
 
         # Захват видео
@@ -55,30 +56,23 @@ class RtspStreamer:
 
         return [
             ffmpeg_exe,
-            "-y",
-            "-f",
-            "rawvideo",
-            "-vcodec",
-            "rawvideo",
-            "-pix_fmt",
-            "bgr24",
-            "-s",
-            f"{self.width}x{self.height}",
-            "-r",
-            str(self.fps),
-            "-i",
-            "-",  # Ввод из пайпа
-            "-c:v",
-            "libx264",
-            "-preset",
-            "ultrafast",
-            "-tune",
-            "zerolatency",
-            "-f",
-            "rtsp",
-            "-rtsp_transport",
-            "tcp",
-            self.rtsp_url,
+            '-y',
+            '-f', 'rawvideo',
+            '-vcodec', 'rawvideo',
+            '-pix_fmt', 'bgr24',
+            '-s', f"{self.width}x{self.height}",
+            '-r', str(self.fps),
+            '-i', '-',
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-tune', 'zerolatency',
+            '-pix_fmt', 'yuv420p',
+            '-profile:v', 'baseline',
+            '-level', '3.0',
+
+            '-f', 'rtsp',
+            '-rtsp_transport', 'tcp',
+            self.rtsp_url
         ]
 
     def frame_update(self, frame: np.ndarray) -> np.ndarray:
