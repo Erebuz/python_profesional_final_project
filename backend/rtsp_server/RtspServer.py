@@ -79,9 +79,13 @@ class RtspStreamer:
             '-s', f"{self.width}x{self.height}",
             '-r', str(self.fps),
             '-i', '-',
+
             '-c:v', 'libx264',
             '-preset', 'ultrafast',
             '-tune', 'zerolatency',
+            "-g", str(self.fps * 2),
+            "-x264-params", "keyint=" + str(self.fps * 2) + ":min-keyint=" + str(self.fps * 2) + ":scenecut=0",
+
             '-pix_fmt', 'yuv420p',
             '-profile:v', 'baseline',
             '-f', 'rtsp',

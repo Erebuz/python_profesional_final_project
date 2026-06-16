@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <v-row>
+    <v-row style="min-height: 600px">
       <v-col cols="8">
         <div class="h-100">
           <live-stream-video-component
