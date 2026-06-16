@@ -2,7 +2,7 @@ name: Build and Publish Smart Eye
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
     tags: [ 'v*.*.*' ]
 
 env:
