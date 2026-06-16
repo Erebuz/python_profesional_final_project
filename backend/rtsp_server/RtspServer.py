@@ -1,13 +1,15 @@
 import argparse
 import os
+import shutil
+import socket
 import subprocess
 import time
 from threading import Thread
-from typing import Any, Callable, Final, Optional
+from typing import Final, Optional
 
 import cv2
-import imageio_ffmpeg
 import numpy as np
+import imageio_ffmpeg
 
 
 class RtspStreamer:
@@ -19,6 +21,9 @@ class RtspStreamer:
         # Конфигурация
         self.source: str | int = source
         self.fps: int = fps
+        self.port: int = port
+        self.uri: str = uri
+        self.host: str = host
         self.rtsp_url: Final[str] = f"rtsp://{host}:{port}/{uri}"
         print('RTSP output:', self.rtsp_url)
         self.show_stat: bool = show_stat
@@ -52,10 +57,21 @@ class RtspStreamer:
 
     def _get_ffmpeg_command(self) -> list[str]:
         """Формирует команду FFmpeg для трансляции."""
-        ffmpeg_exe: str = imageio_ffmpeg.get_ffmpeg_exe()
+        ffmpeg_bin = shutil.which("ffmpeg")
 
-        return [
-            ffmpeg_exe,
+        # 2. Если системного нет (Windows разработка), берем из imageio_ffmpeg
+        if not ffmpeg_bin:
+            try:
+                ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
+            except ImportError:
+                ffmpeg_bin = "ffmpeg"
+
+        cmd = [ffmpeg_bin, "-hide_banner", "-loglevel", "error", "-y"]
+
+        if isinstance(self.source, str) and not self.source.isdigit() and os.path.isfile(self.source):
+            cmd.append("-re")
+
+        cmd.extend([
             '-y',
             '-f', 'rawvideo',
             '-vcodec', 'rawvideo',
@@ -68,12 +84,12 @@ class RtspStreamer:
             '-tune', 'zerolatency',
             '-pix_fmt', 'yuv420p',
             '-profile:v', 'baseline',
-            '-level', '3.0',
-
             '-f', 'rtsp',
             '-rtsp_transport', 'tcp',
             self.rtsp_url
-        ]
+        ])
+
+        return cmd
 
     def frame_update(self, frame: np.ndarray) -> np.ndarray:
         """Метод для обработки кадров (можно переопределить)."""
@@ -90,51 +106,77 @@ class RtspStreamer:
                 print(f"FPS:    {self.current_fps:.2f}")
             time.sleep(1)
 
+    def _wait_for_server(self, timeout: int = 30) -> bool:
+        """Ожидание доступности RTSP сервера."""
+        print(f"[*] Waiting for RTSP server at {self.host}:{self.port}...")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                with socket.create_connection((self.host, self.port), timeout=1):
+                    print("[+] RTSP server is reachable.")
+                    return True
+            except (ConnectionRefusedError, socket.timeout):
+                time.sleep(1)
+        return False
+
     def start(self) -> None:
         """Запуск трансляции."""
         if not self.capture.isOpened():
             print(f"Error: Could not open source {self.source}")
             return
 
+        success, first_frame = self.capture.read()
+        if not success or first_frame is None:
+            print("Error: Could not read the first frame to determine resolution.")
+            return
+
+        if not self._wait_for_server():
+            print(f"Error: MediaMTX ({self.host}) not found. Check docker-compose.")
+            return
+
+        self.height, self.width = first_frame.shape[:2]
+        print(f"[*] Detected resolution: {self.width}x{self.height}")
+        print(f"[*] Target URL: {self.rtsp_url}")
+
+        cmd = self._get_ffmpeg_command()
+        print(f"[*] Starting FFmpeg with command: {' '.join(cmd)}")
+
+        self._process = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=None,
+            stderr=subprocess.STDOUT,
+            bufsize=0
+        )
+
         self.is_running = True
 
-        # Запускаем FFmpeg
-        self._process = subprocess.Popen(self._get_ffmpeg_command(), stdin=subprocess.PIPE, stderr=subprocess.DEVNULL if not self.show_stat else None)
-
-        # Поток статистики
         Thread(target=self._stats_loop, daemon=True).start()
-
-        print(f"Stream started at {self.rtsp_url}")
 
         last_time = time.time()
         frame_duration = 1.0 / self.fps
 
         try:
+            self._send_frame(first_frame)
+
             while self.is_running:
                 start_loop = time.time()
 
                 success, frame = self.capture.read()
                 if not success:
-                    print("Failed to read frame")
-                    break
-
-                # Обработка кадра
-                frame = self.frame_update(frame)
-
-                # Запись в пайп FFmpeg
-                if self._process and self._process.stdin:
-                    try:
-                        self._process.stdin.write(frame.tobytes())
-                    except BrokenPipeError:
-                        print("FFmpeg process broken")
+                    if isinstance(self.source, str):
+                        self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        continue
+                    else:
+                        print("Source stream stopped.")
                         break
 
-                # Расчет FPS
+                self._send_frame(frame)
+
                 end_loop = time.time()
-                self.current_fps = round(1.0 / (end_loop - last_time))
+                self.current_fps = round(1.0 / (end_loop - last_time)) if (end_loop - last_time) > 0 else 0
                 last_time = end_loop
 
-                # Контроль частоты кадров
                 sleep_time = frame_duration - (end_loop - start_loop)
                 if sleep_time > 0:
                     time.sleep(sleep_time)
@@ -143,6 +185,25 @@ class RtspStreamer:
             print("Stopping...")
         finally:
             self.stop()
+
+    def _send_frame(self, frame: np.ndarray) -> None:
+        """Вспомогательный метод для отправки кадра в stdin FFmpeg."""
+        if not self._process or not self._process.stdin:
+            return
+
+        try:
+            frame = self.frame_update(frame)
+
+            if frame.shape[0] != self.height or frame.shape[1] != self.width:
+                frame = cv2.resize(frame, (self.width, self.height))
+
+            self._process.stdin.write(frame.tobytes())
+        except BrokenPipeError:
+            print("[!!!] FFmpeg process broken (BrokenPipe). Check logs above for FFmpeg errors.")
+            self.is_running = False
+        except Exception as e:
+            print(f"Error sending frame: {e}")
+            self.is_running = False
 
     def stop(self) -> None:
         """Остановка всех процессов."""

@@ -1,13 +1,14 @@
 import argparse
 import datetime
 import os
+import threading
 from typing import Any
 
 import cv2
 import numpy as np
 
 from neural_net.NeuralNet import NeuralNetwork
-from .RtspServer import RtspStreamer
+from rtsp_server.RtspServer import RtspStreamer
 
 
 class RtspMergeServer(RtspStreamer):
@@ -33,6 +34,8 @@ class RtspMergeServer(RtspStreamer):
         self._activity_log: list[int] = []
         self._activity_log_last_time: float = 0.0
 
+        self._nn_busy: bool = False
+        self._nn_lock = threading.Lock()
         self.supported_class: dict[str, bool] = {
             "person": True,
             "car": True,
@@ -46,30 +49,48 @@ class RtspMergeServer(RtspStreamer):
             "cell phone": True,
         }
 
-        # Вызов конструктора нового базового класса
         super().__init__(source=source, fps=fps, port=port, host=host, uri=uri, show_stat=show_stat)
+
+    def _neural_worker(self, frame: np.ndarray) -> None:
+        """Воркер для запуска в отдельном потоке."""
+        try:
+            res = self.model.detect_objects(frame)
+
+            with self._nn_lock:
+                self.neural_osd = res
+        finally:
+            self._nn_busy = False
 
     def frame_update(self, frame: np.ndarray) -> np.ndarray:
         """Переопределенный метод обработки кадра."""
-        # 1. Добавляем временную метку
-        timestamp = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        timestamp: str = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
         cv2.putText(frame, timestamp, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
         if not self.show_osd:
             return frame
 
-        # 2. Логика пропуска кадров для нейросети
-        if self.frame_counter > self.frame_skip:
-            self.frame_counter = 0
+        if self.frame_counter >= self.frame_skip:
+            if not self._nn_busy:
+                self._nn_busy = True
+                self.frame_counter = 0
 
-        if self.frame_counter == 0:
-            self.neural_osd = self.model.detect_objects(frame)
+                thread = threading.Thread(
+                    target=self._neural_worker,
+                    args=(frame.copy(),),
+                    daemon=True
+                )
+                thread.start()
 
         self.frame_counter += 1
 
-        # 3. Отрисовка результатов
-        if self.neural_osd is not None:
-            frame = self.draw_outputs(frame, self.neural_osd, self.model.class_names, self.whitelist)
+        with self._nn_lock:
+            if self.neural_osd is not None:
+                frame = self.draw_outputs(
+                    frame,
+                    self.neural_osd,
+                    self.model.class_names,
+                    self.whitelist
+                )
 
         return frame
 

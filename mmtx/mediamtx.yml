@@ -40,7 +40,7 @@ rtmpAddress: :1935
 hls: yes
 hlsAddress: :8888
 hlsVariant: mpegts
-hlsSegmentCount: 3
+hlsSegmentCount: 5
 hlsSegmentDuration: 1s
 hlsAllowOrigins: ["*"]
 hlsAlwaysRemux: yes

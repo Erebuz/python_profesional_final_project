@@ -2,8 +2,12 @@
   <v-container>
     <v-row>
       <v-col cols="8">
-        <div>
-          <live-stream-video-component />
+        <div class="h-100">
+          <live-stream-video-component
+            :path="STREAM_BASE + '/video/index.m3u8'"
+            autoplay
+            auto-delay
+          />
         </div>
       </v-col>
 
@@ -117,6 +121,7 @@ import LiveStreamVideoComponent from '@/components/liveStreamVideoComponent.vue'
 import store from '@/store'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import router from '@/router'
+import { STREAM_BASE } from '@/plugins/http-common'
 
 store.dispatch('api_get_enable_nn')
 
