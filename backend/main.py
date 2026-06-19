@@ -14,7 +14,12 @@ class App:
     def __init__(self):
         load_dotenv('.env')
         self.root = os.path.dirname(os.path.abspath(__file__))
-        self.rtsp = RtspMergeServer(source=os.getenv("SOURCE", 0),
+        try:
+            source = int(os.getenv("SOURCE", 0))
+        except:
+            source = os.getenv("SOURCE", 0)
+
+        self.rtsp = RtspMergeServer(source=source,
                                     port=int(os.getenv("RTSP_PORT", 8554)),
                                     host=os.getenv("RTSP_HOST", "localhost"),
                                     fps=30,
