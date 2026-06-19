@@ -28,7 +28,8 @@ class RtspStreamer:
     ) -> None:
         # Конфигурация
         self.source: str | int = source
-        self.fps: int = fps
+        self._target_fps: int = fps
+        self._max_fps: int = fps
         self.port: int = port
         self.uri: str = uri
         self.host: str = host
@@ -62,15 +63,15 @@ class RtspStreamer:
 
     @property
     def fps_max(self) -> int:
-        return self.fps
+        return self._max_fps
 
     @property
     def target_fps(self) -> int:
-        return self.fps
+        return self._target_fps
 
     def set_target_fps(self, val: int) -> None:
         """Метод для динамического изменения FPS (используется в API)"""
-        self.fps = val
+        self._target_fps = val if val <= self._max_fps else self._max_fps
         print(f"Target FPS updated to: {val}")
 
     def _get_ffmpeg_command(self) -> list[str]:
@@ -105,7 +106,7 @@ class RtspStreamer:
                 "-s",
                 f"{self.width}x{self.height}",
                 "-r",
-                str(self.fps),
+                str(self._target_fps),
                 "-i",
                 "-",
                 "-c:v",
@@ -115,12 +116,12 @@ class RtspStreamer:
                 "-tune",
                 "zerolatency",
                 "-g",
-                str(self.fps * 2),
+                str(self._target_fps * 2),
                 "-x264-params",
                 "keyint="
-                + str(self.fps * 2)
+                + str(self._target_fps * 2)
                 + ":min-keyint="
-                + str(self.fps * 2)
+                + str(self._target_fps * 2)
                 + ":scenecut=0",
                 "-pix_fmt",
                 "yuv420p",
@@ -205,7 +206,6 @@ class RtspStreamer:
         Thread(target=self._stats_loop, daemon=True).start()
 
         last_time = time.time()
-        frame_duration = 1.0 / self.fps
 
         try:
             self._send_frame(first_frame)
@@ -232,6 +232,7 @@ class RtspStreamer:
                 )
                 last_time = end_loop
 
+                frame_duration = 1.0 / self._target_fps
                 sleep_time = frame_duration - (end_loop - start_loop)
                 if sleep_time > 0:
                     time.sleep(sleep_time)

@@ -182,7 +182,7 @@ class TestRtspStreamer(FrameMixin, ConfigMixin):
             streamer = RtspStreamer(source=0, fps=30)
             streamer.set_target_fps(new_fps)
             assert streamer.target_fps == new_fps
-            assert streamer.fps == new_fps
+            assert streamer._target_fps == new_fps
 
     @pytest.mark.parametrize("show_stat", [True, False])
     def test_show_stat_property(self, show_stat, mock_capture):
@@ -539,7 +539,7 @@ class TestRtspServerIntegration(FrameMixin, ConfigMixin, NeuralMixin):
                 server = config_class(source=0, fps=fps, show_osd=False)
             else:
                 server = config_class(source=0, fps=fps)
-            assert server.fps == fps
+            assert server._target_fps == fps
             assert server.target_fps == fps
 
     @pytest.mark.parametrize(
@@ -556,7 +556,7 @@ class TestRtspServerIntegration(FrameMixin, ConfigMixin, NeuralMixin):
             params.update(extra_params)
             server = config_class(**params)
             assert server.source == 0
-            assert server.fps == 30
+            assert server._target_fps == 30
 
     @pytest.mark.parametrize(
         "width,height,fps",
@@ -573,4 +573,4 @@ class TestRtspServerIntegration(FrameMixin, ConfigMixin, NeuralMixin):
             server = RtspStreamer(source=0, fps=fps)
             assert server.width == width
             assert server.height == height
-            assert server.fps == fps
+            assert server._target_fps == fps
