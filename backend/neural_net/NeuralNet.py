@@ -1,5 +1,4 @@
 import os
-from typing import Any
 
 import numpy as np
 
@@ -20,7 +19,9 @@ class NeuralNetwork:
         self.model = self.neural_net.get_model()
         self.class_names = self.neural_net.get_class_names()
 
-    def detect_objects(self, image: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def detect_objects(
+        self, image: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Метод детекции.
         Принимает BGR кадр из OpenCV, возвращает предикты.

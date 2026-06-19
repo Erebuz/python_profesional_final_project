@@ -1,5 +1,6 @@
 import json
 import os
+from typing import Any, Dict
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +10,7 @@ from web.auth import Auth
 
 
 class WebServer:
-    def __init__(self, app_logic):
+    def __init__(self, app_logic: Any) -> None:
         self.app = FastAPI(title="pp_smart_eye")
         self.logic = app_logic
         self.auth = Auth()
@@ -26,9 +27,15 @@ class WebServer:
         # Static files
         self.public_path = os.path.join(app_logic.root, "public")
         if os.path.exists(os.path.join(self.public_path, "static")):
-            self.app.mount("/static", StaticFiles(directory=os.path.join(self.public_path, "static")), name="static")
+            self.app.mount(
+                "/static",
+                StaticFiles(
+                    directory=os.path.join(self.public_path, "static")
+                ),
+                name="static",
+            )
 
-    async def send_all_sockets(self, data: dict):
+    async def send_all_sockets(self, data: Dict[str, Any]) -> None:
         message = json.dumps(data)
         for socket in self.sockets:
             try:
@@ -36,7 +43,7 @@ class WebServer:
             except:
                 self.sockets.remove(socket)
 
-    def setup_routes(self):
+    def setup_routes(self) -> None:
         from web.api_routes import router as api_router
         from web.auth_routes import router as auth_router
         from web.sys_routes import router as sys_router

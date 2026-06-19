@@ -1,4 +1,5 @@
 import os
+from typing import Any
 
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
@@ -7,7 +8,7 @@ router = APIRouter()
 
 
 @router.websocket("/websocket")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(websocket: WebSocket) -> None:
     web_server = websocket.app.state.web_server
     await websocket.accept()
     web_server.sockets.append(websocket)
@@ -20,16 +21,18 @@ async def websocket_endpoint(websocket: WebSocket):
             web_server.sockets.remove(websocket)
 
 
-@router.get("/")
-async def index(request: Request):
+@router.get("/", response_model=None)
+async def index(request: Request) -> FileResponse | dict[str, Any]:
     index_path = os.path.join(request.app.state.root, "public", "index.html")
     if not os.path.exists(index_path):
         return {"error": "index.html not found"}
     return FileResponse(index_path)
 
 
-@router.get("/{path_name:path}")
-async def catch_all(request: Request, path_name: str):
+@router.get("/{path_name:path}", response_model=None)
+async def catch_all(
+    request: Request, path_name: str
+) -> FileResponse | dict[str, Any]:
     full_path = os.path.join(request.app.state.root, "public", path_name)
 
     if os.path.exists(full_path) and os.path.isfile(full_path):

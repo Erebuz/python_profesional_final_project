@@ -6,3 +6,4 @@ max-doc-length = 120
 inline-quotes = single
 show-source = true
 statistics = false
+exclude = backend/tests

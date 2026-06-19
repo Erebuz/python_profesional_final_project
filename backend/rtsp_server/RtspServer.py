@@ -5,11 +5,11 @@ import socket
 import subprocess
 import time
 from threading import Thread
-from typing import Final, Optional
+from typing import Final, Optional, cast
 
 import cv2
-import numpy as np
 import imageio_ffmpeg
+import numpy as np
 
 
 class RtspStreamer:
@@ -17,7 +17,15 @@ class RtspStreamer:
     Класс для захвата видео и трансляции в RTSP сервер через FFmpeg.
     """
 
-    def __init__(self, source: str | int = 0, fps: int = 30, port: int = 8554, uri: str = "video", host: str = "localhost", show_stat: bool = False) -> None:
+    def __init__(
+        self,
+        source: str | int = 0,
+        fps: int = 30,
+        port: int = 8554,
+        uri: str = "video",
+        host: str = "localhost",
+        show_stat: bool = False,
+    ) -> None:
         # Конфигурация
         self.source: str | int = source
         self.fps: int = fps
@@ -25,15 +33,25 @@ class RtspStreamer:
         self.uri: str = uri
         self.host: str = host
         self.rtsp_url: Final[str] = f"rtsp://{host}:{port}/{uri}"
-        print('RTSP output:', self.rtsp_url)
+        print("RTSP output:", self.rtsp_url)
         self.show_stat: bool = show_stat
 
         # Захват видео
-        self.capture: cv2.VideoCapture = cv2.VideoCapture(self.source)
+        self.capture: cv2.VideoCapture = cv2.VideoCapture(
+            cast(str, self.source)
+        )
 
         # Получаем размеры кадра
-        self.width: int = int(os.getenv("SOURCE_WIDTH", self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)))
-        self.height: int = int(os.getenv("SOURCE_HEIGHT", self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+        self.width: int = int(
+            os.getenv(
+                "SOURCE_WIDTH", self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)
+            )
+        )
+        self.height: int = int(
+            os.getenv(
+                "SOURCE_HEIGHT", self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)
+            )
+        )
 
         self.frame: Optional[np.ndarray] = None
         self.is_running: bool = False
@@ -68,30 +86,53 @@ class RtspStreamer:
 
         cmd = [ffmpeg_bin, "-hide_banner", "-loglevel", "error", "-y"]
 
-        if isinstance(self.source, str) and not self.source.isdigit() and os.path.isfile(self.source):
+        if (
+            isinstance(self.source, str)
+            and not self.source.isdigit()
+            and os.path.isfile(self.source)
+        ):
             cmd.append("-re")
 
-        cmd.extend([
-            '-y',
-            '-f', 'rawvideo',
-            '-vcodec', 'rawvideo',
-            '-pix_fmt', 'bgr24',
-            '-s', f"{self.width}x{self.height}",
-            '-r', str(self.fps),
-            '-i', '-',
-
-            '-c:v', 'libx264',
-            '-preset', 'ultrafast',
-            '-tune', 'zerolatency',
-            "-g", str(self.fps * 2),
-            "-x264-params", "keyint=" + str(self.fps * 2) + ":min-keyint=" + str(self.fps * 2) + ":scenecut=0",
-
-            '-pix_fmt', 'yuv420p',
-            '-profile:v', 'baseline',
-            '-f', 'rtsp',
-            '-rtsp_transport', 'tcp',
-            self.rtsp_url
-        ])
+        cmd.extend(
+            [
+                "-y",
+                "-f",
+                "rawvideo",
+                "-vcodec",
+                "rawvideo",
+                "-pix_fmt",
+                "bgr24",
+                "-s",
+                f"{self.width}x{self.height}",
+                "-r",
+                str(self.fps),
+                "-i",
+                "-",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-tune",
+                "zerolatency",
+                "-g",
+                str(self.fps * 2),
+                "-x264-params",
+                "keyint="
+                + str(self.fps * 2)
+                + ":min-keyint="
+                + str(self.fps * 2)
+                + ":scenecut=0",
+                "-pix_fmt",
+                "yuv420p",
+                "-profile:v",
+                "baseline",
+                "-f",
+                "rtsp",
+                "-rtsp_transport",
+                "tcp",
+                self.rtsp_url,
+            ]
+        )
 
         return cmd
 
@@ -116,7 +157,9 @@ class RtspStreamer:
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                with socket.create_connection((self.host, self.port), timeout=1):
+                with socket.create_connection(
+                    (self.host, self.port), timeout=1
+                ):
                     print("[+] RTSP server is reachable.")
                     return True
             except (ConnectionRefusedError, socket.timeout):
@@ -131,11 +174,15 @@ class RtspStreamer:
 
         success, first_frame = self.capture.read()
         if not success or first_frame is None:
-            print("Error: Could not read the first frame to determine resolution.")
+            print(
+                "Error: Could not read the first frame to determine resolution."
+            )
             return
 
         if not self._wait_for_server():
-            print(f"Error: MediaMTX ({self.host}) not found. Check docker-compose.")
+            print(
+                f"Error: MediaMTX ({self.host}) not found. Check docker-compose."
+            )
             return
 
         self.height, self.width = first_frame.shape[:2]
@@ -150,7 +197,7 @@ class RtspStreamer:
             stdin=subprocess.PIPE,
             stdout=None,
             stderr=subprocess.STDOUT,
-            bufsize=0
+            bufsize=0,
         )
 
         self.is_running = True
@@ -178,7 +225,11 @@ class RtspStreamer:
                 self._send_frame(frame)
 
                 end_loop = time.time()
-                self.current_fps = round(1.0 / (end_loop - last_time)) if (end_loop - last_time) > 0 else 0
+                self.current_fps = (
+                    round(1.0 / (end_loop - last_time))
+                    if (end_loop - last_time) > 0
+                    else 0
+                )
                 last_time = end_loop
 
                 sleep_time = frame_duration - (end_loop - start_loop)
@@ -203,7 +254,9 @@ class RtspStreamer:
 
             self._process.stdin.write(frame.tobytes())
         except BrokenPipeError:
-            print("[!!!] FFmpeg process broken (BrokenPipe). Check logs above for FFmpeg errors.")
+            print(
+                "[!!!] FFmpeg process broken (BrokenPipe). Check logs above for FFmpeg errors."
+            )
             self.is_running = False
         except Exception as e:
             print(f"Error sending frame: {e}")
@@ -227,11 +280,20 @@ if __name__ == "__main__":
     parser.add_argument("--source", default=0, help="Device ID or video file")
     parser.add_argument("--fps", default=30, type=int, help="Target FPS")
     parser.add_argument("--port", default=8554, type=int, help="RTSP Port")
-    parser.add_argument("--host", default="localhost", help="RTSP Server Host (e.g. mediamtx)")
+    parser.add_argument(
+        "--host", default="localhost", help="RTSP Server Host (e.g. mediamtx)"
+    )
     parser.add_argument("--uri", default="video", help="Stream URI")
     parser.add_argument("--stat", action="store_true", help="Show statistics")
 
     args = parser.parse_args()
 
-    streamer = RtspStreamer(source=args.source, fps=args.fps, port=args.port, host=args.host, uri=args.uri, show_stat=args.stat)
+    streamer = RtspStreamer(
+        source=args.source,
+        fps=args.fps,
+        port=args.port,
+        host=args.host,
+        uri=args.uri,
+        show_stat=args.stat,
+    )
     streamer.start()

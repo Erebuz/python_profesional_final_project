@@ -2,7 +2,6 @@ import argparse
 import datetime
 import os
 import threading
-from typing import Any
 
 import cv2
 import numpy as np
@@ -26,7 +25,9 @@ class RtspMergeServer(RtspStreamer):
         self.model = NeuralNetwork()
 
         self.show_osd: bool = show_osd
-        self.neural_osd: Any = None
+        self.neural_osd: (
+            tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray] | None
+        ) = None
         self.frame_skip: int = frame_skip
         self.frame_counter: int = 0
         self.active_class: dict[str, int] = {}
@@ -49,7 +50,14 @@ class RtspMergeServer(RtspStreamer):
             "cell phone": True,
         }
 
-        super().__init__(source=source, fps=fps, port=port, host=host, uri=uri, show_stat=show_stat)
+        super().__init__(
+            source=source,
+            fps=fps,
+            port=port,
+            host=host,
+            uri=uri,
+            show_stat=show_stat,
+        )
 
     def _neural_worker(self, frame: np.ndarray) -> None:
         """Воркер для запуска в отдельном потоке."""
@@ -64,7 +72,15 @@ class RtspMergeServer(RtspStreamer):
     def frame_update(self, frame: np.ndarray) -> np.ndarray:
         """Переопределенный метод обработки кадра."""
         timestamp: str = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        cv2.putText(frame, timestamp, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        cv2.putText(
+            frame,
+            timestamp,
+            (10, 25),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (0, 255, 255),
+            2,
+        )
 
         if not self.show_osd:
             return frame
@@ -77,7 +93,7 @@ class RtspMergeServer(RtspStreamer):
                 thread = threading.Thread(
                     target=self._neural_worker,
                     args=(frame.copy(),),
-                    daemon=True
+                    daemon=True,
                 )
                 thread.start()
 
@@ -89,12 +105,18 @@ class RtspMergeServer(RtspStreamer):
                     frame,
                     self.neural_osd,
                     self.model.class_names,
-                    self.whitelist
+                    self.whitelist,
                 )
 
         return frame
 
-    def draw_outputs(self, frame: np.ndarray, outputs: tuple, class_names: list[str], white_list: list[str] | None = None) -> np.ndarray:
+    def draw_outputs(
+        self,
+        frame: np.ndarray,
+        outputs: tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+        class_names: list[str],
+        white_list: list[str] | None = None,
+    ) -> np.ndarray:
         boxes, score, classes, nums = outputs
         # Извлекаем данные (предполагается формат [batch, num, data])
         boxes, score, classes, nums = boxes[0], score[0], classes[0], nums[0]
@@ -123,9 +145,21 @@ class RtspMergeServer(RtspStreamer):
             text_pos = (x1y1[0], max(16, x1y1[1] + 16))
 
             cv2.rectangle(frame, x1y1, x2y2, (255, 0, 0), 2)
-            score_val = score[i][0].item() if isinstance(score[i], (list, np.ndarray)) else score[i]
+            score_val = (
+                score[i][0].item()
+                if isinstance(score[i], (list, np.ndarray))
+                else score[i]
+            )
             label = f"{cl.capitalize()} {score_val:.2f}"
-            cv2.putText(frame, label, text_pos, cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+            cv2.putText(
+                frame,
+                label,
+                text_pos,
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (0, 255, 255),
+                2,
+            )
 
         self.active_class = current_active_class
         self.update_activity_log(current_active_class)
@@ -167,12 +201,27 @@ if __name__ == "__main__":
     parser.add_argument("--port", default=8554, type=int, help="RTSP Port")
     parser.add_argument("--host", default="localhost", help="MediaMTX Host")
     parser.add_argument("--uri", default="video", help="Stream URI")
-    parser.add_argument("--stat", default=False, action="store_true", help="Show statistics")
-    parser.add_argument("--osd", default=False, action="store_true", help="Show Neural OSD")
-    parser.add_argument("--frame_skip", default=0, type=int, help="Frames to skip for AI")
+    parser.add_argument(
+        "--stat", default=False, action="store_true", help="Show statistics"
+    )
+    parser.add_argument(
+        "--osd", default=False, action="store_true", help="Show Neural OSD"
+    )
+    parser.add_argument(
+        "--frame_skip", default=0, type=int, help="Frames to skip for AI"
+    )
 
     args = parser.parse_args()
 
-    server = RtspMergeServer(source=args.source, fps=args.fps, port=args.port, host=args.host, uri=args.uri, show_stat=args.stat, show_osd=args.osd, frame_skip=args.frame_skip)
+    server = RtspMergeServer(
+        source=args.source,
+        fps=args.fps,
+        port=args.port,
+        host=args.host,
+        uri=args.uri,
+        show_stat=args.stat,
+        show_osd=args.osd,
+        frame_skip=args.frame_skip,
+    )
 
     server.start()

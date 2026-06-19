@@ -12,23 +12,27 @@ from web.main import WebServer
 
 class App:
     def __init__(self):
-        load_dotenv('.env')
+        load_dotenv(".env")
         self.root = os.path.dirname(os.path.abspath(__file__))
         try:
             source = int(os.getenv("SOURCE", 0))
         except:
             source = os.getenv("SOURCE", 0)
 
-        self.rtsp = RtspMergeServer(source=source,
-                                    port=int(os.getenv("RTSP_PORT", 8554)),
-                                    host=os.getenv("RTSP_HOST", "localhost"),
-                                    fps=30,
-                                    show_stat=False,
-                                    show_osd=False)
+        self.rtsp = RtspMergeServer(
+            source=source,
+            port=int(os.getenv("RTSP_PORT", 8554)),
+            host=os.getenv("RTSP_HOST", "localhost"),
+            fps=30,
+            show_stat=False,
+            show_osd=False,
+        )
 
         print(f"DEBUG: Initializing RTSP Streamer")
         print(f"DEBUG: Source: {os.getenv("SOURCE", 0)}")
-        print(f"DEBUG: Target: rtsp://{os.getenv("RTSP_HOST", "localhost")}:{os.getenv("RTSP_PORT", 8554)}/video")
+        print(
+            f"DEBUG: Target: rtsp://{os.getenv("RTSP_HOST", "localhost")}:{os.getenv("RTSP_PORT", 8554)}/video"
+        )
 
         self.web_server = WebServer(self)
 
@@ -71,7 +75,12 @@ class App:
         """Главный асинхронный метод запуска"""
         self.start_rtsp()
 
-        config = uvicorn.Config(app=self.web_server.app, host="0.0.0.0", port=8080, log_level="info")
+        config = uvicorn.Config(
+            app=self.web_server.app,
+            host="0.0.0.0",
+            port=8080,
+            log_level="info",
+        )
         server = uvicorn.Server(config)
 
         stats_task = asyncio.create_task(self.broadcast_stats())

@@ -25,8 +25,10 @@ dev = [
     "isort>=7.0.0",
     "mypy>=1.19.0",
     "pre-commit>=4.6.0",
-    "pytest>=9.0.1",
+    "pytest>=9.1.1",
     "pytest-cov>=7.0.0",
+    "type-yaml>=0.3.0",
+    "types-python-jose>=3.5.0.20260408",
 ]
 
 [tool.isort]
@@ -37,7 +39,7 @@ include_trailing_comma = true
 use_parentheses = true
 
 [tool.black]
-line-length = 176
+line-length = 79
 
 target-version = [
     'py312',
